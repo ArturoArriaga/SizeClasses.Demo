@@ -7,6 +7,7 @@
 //
 import UIKit
 
+//MARK: CollectionViewCell
 class CollectionViewCell: UICollectionViewCell {
     
     let someOrangeView : UIView = {
@@ -43,7 +44,7 @@ class CollectionViewCell: UICollectionViewCell {
         v.spacing = 10
         return v
     }()
-    
+    //MARK: Constraints
     var sharedConstraints: [NSLayoutConstraint] = []
     var landscapeContraints: [NSLayoutConstraint] = []
     var portraitConstraints: [NSLayoutConstraint] = []
@@ -60,9 +61,6 @@ class CollectionViewCell: UICollectionViewCell {
 
     }
     
-    override func layoutSubviews() {
-        print(baseStackView.frame)
-    }
     
     fileprivate func setupConstraints() {
         sharedConstraints.append(contentsOf: [
@@ -138,12 +136,25 @@ class MainController: UICollectionViewController, UICollectionViewDelegateFlowLa
     
     //the bug is here.
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
+        
         return .init(width: self.view.frame.size.width, height: self.view.frame.size.height)
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! CollectionViewCell
         return cell
+    }
+    
+    override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
+        super.traitCollectionDidChange(previousTraitCollection)
+    }
+    
+    override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
+        super.viewWillTransition(to: size, with: coordinator)
+        guard let flowLayout = collectionView.collectionViewLayout as? UICollectionViewFlowLayout else {
+            return
+        }
+        flowLayout.invalidateLayout()
     }
     
     

@@ -5,64 +5,79 @@
 //  Created by Art Arriaga on 2/25/20.
 //  Copyright © 2020 ArturoArriaga.IO. All rights reserved.
 //
-
-import SwiftUI
-
-struct ContentView: View {
-    var body: some View {
-        Text("Hello, World!")
-    }
-}
-
-struct ContentView_Previews: PreviewProvider {
-    static var previews: some View {
-        ContentView()
-    }
-}
+import UIKit
 
 class CollectionViewCell: UICollectionViewCell {
     
-    let someView: UIView = {
+    let someOrangeView : UIView = {
         let v = UIView()
+        v.backgroundColor = .orange
+        return v
+    }()
+    
+    let someRedView : UIView = {
+           let v = UIView()
+           v.backgroundColor = .red
+           return v
+       }()
+    
+    lazy var stackView: UIStackView = {
+        let sv = UIStackView(arrangedSubviews: [someOrangeView, someRedView])
+        sv.axis = .vertical
+        sv.distribution = .fillEqually
+        sv.spacing = 8
+        return sv
+    }()
+    
+    let somePotentialImageView: UIView = {
+        let v = UIView()
+        v.backgroundColor = .purple
+        return v
+    }()
+    
+    lazy var baseStackView: UIStackView = {
+        let v = UIStackView(arrangedSubviews: [somePotentialImageView, stackView])
         v.translatesAutoresizingMaskIntoConstraints = false
         v.backgroundColor = .blue
+        v.distribution = .fillEqually
+        v.spacing = 10
         return v
     }()
     
     var sharedConstraints: [NSLayoutConstraint] = []
-    var regularConstraints: [NSLayoutConstraint] = []
-    var compactConstraints: [NSLayoutConstraint] = []
+    var landscapeContraints: [NSLayoutConstraint] = []
+    var portraitConstraints: [NSLayoutConstraint] = []
 
-    
+    //Queston: Should trait collection be updated from the cell?
     override init(frame: CGRect) {
         super.init(frame: frame)
         self.backgroundColor = .green
-        
-        addSubview(someView)
+        addSubview(baseStackView)
 
         setupConstraints()
         NSLayoutConstraint.activate(sharedConstraints)
-        
+        layoutTrait(traitCollection: UIScreen.main.traitCollection)
+
     }
     
     override func layoutSubviews() {
-        layoutTrait(traitCollection: UIScreen.main.traitCollection)
+        print(baseStackView.frame)
     }
     
     fileprivate func setupConstraints() {
         sharedConstraints.append(contentsOf: [
-            someView.centerXAnchor.constraint(equalTo: centerXAnchor),
-            someView.centerYAnchor.constraint(equalTo: centerYAnchor)
+            baseStackView.centerXAnchor.constraint(equalTo: centerXAnchor),
+            baseStackView.centerYAnchor.constraint(equalTo: centerYAnchor)
         ])
-        
-        regularConstraints.append(contentsOf: [
-            someView.heightAnchor.constraint(equalToConstant: 300),
-            someView.widthAnchor.constraint(equalToConstant: 200),
+        //constraints for landscape mode with compact height, regular width
+        landscapeContraints.append(contentsOf: [
+            baseStackView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.7),
+            baseStackView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.8),
         ])
-        
-        compactConstraints.append(contentsOf: [
-            someView.heightAnchor.constraint(equalToConstant: 200),
-            someView.widthAnchor.constraint(equalToConstant: 400)
+        //constraints for portrait mode with regular height, compact width
+        portraitConstraints.append(contentsOf: [
+            baseStackView.heightAnchor.constraint(equalTo: heightAnchor, multiplier: 0.8),
+            baseStackView.widthAnchor.constraint(equalTo: widthAnchor, multiplier: 0.9)
         
         ])
     }
@@ -74,26 +89,31 @@ class CollectionViewCell: UICollectionViewCell {
             NSLayoutConstraint.activate(sharedConstraints)
         }
         //horizontal means compact width/ vertical means height
+        // this is normal orientation.
         if traitCollection.horizontalSizeClass == .compact && traitCollection.verticalSizeClass == .regular {
-            if regularConstraints.count > 0 && regularConstraints[0].isActive {
-                NSLayoutConstraint.deactivate(regularConstraints)
+            if landscapeContraints.count > 0 && landscapeContraints[0].isActive {
+                NSLayoutConstraint.deactivate(landscapeContraints)
             }
-            //activate compact constraints
-            NSLayoutConstraint.activate(compactConstraints)
+            
+            //activate portriat constraints
+            NSLayoutConstraint.activate(portraitConstraints)
+            baseStackView.axis = .vertical
         } else {
-            if compactConstraints.count > 0 && compactConstraints[0].isActive {
-                NSLayoutConstraint.deactivate(compactConstraints)
+            // this is the portrait mode.
+            if portraitConstraints.count > 0 && portraitConstraints[0].isActive {
+                NSLayoutConstraint.deactivate(portraitConstraints)
             }
-            //activate regular constraints
-            NSLayoutConstraint.activate(regularConstraints)
+            //activate landscape constraints
+            NSLayoutConstraint.activate(landscapeContraints)
+            baseStackView.axis = .horizontal
         }
     }
-    
+//MARK: TraitCollectionDidChange
     override func traitCollectionDidChange(_ previousTraitCollection: UITraitCollection?) {
         super.traitCollectionDidChange(previousTraitCollection)
-        print(self.traitCollection)
+        print(self.traitCollection, baseStackView.frame)
         layoutTrait(traitCollection: traitCollection)
-        print(self.traitCollection)
+        print(self.traitCollection, baseStackView.frame)
     }
     
     required init?(coder: NSCoder) {
@@ -101,7 +121,7 @@ class CollectionViewCell: UICollectionViewCell {
     }
 }
 
-
+//MARK: MainController
 class MainController: UICollectionViewController, UICollectionViewDelegateFlowLayout {
     let cellId = "cellid"
     
@@ -111,19 +131,21 @@ class MainController: UICollectionViewController, UICollectionViewDelegateFlowLa
         print(self.traitCollection)
     }
     
+    
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         3
     }
     
+    //the bug is here.
     func collectionView(_ collectionView: UICollectionView, layout collectionViewLayout: UICollectionViewLayout, sizeForItemAt indexPath: IndexPath) -> CGSize {
         return .init(width: self.view.frame.size.width, height: self.view.frame.size.height)
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellId, for: indexPath) as! CollectionViewCell
-        cell.layoutIfNeeded()
         return cell
     }
+    
     
     
     init() {
